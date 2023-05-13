@@ -47,6 +47,7 @@ pipeline {
                         withCredentials([string(credentialsId: 'ecr-url', variable: 'ECRURL')]) {
                             withEnv(["ECRURL=${ECRURL}"]) {
                                 docker.withRegistry(env.ECRURL, 'ecr:us-east-1:aws-deploy') {
+//                                 app.push("${env.BUILD_NUMBER}")  # For tagging the image with the actual build number 
                                 app.push("latest")
                             }
                         }
@@ -76,5 +77,30 @@ pipeline {
                 sh "python health.py ${env.REMOTEIP}"
             }
         }
+}
+
+post{
+     
+        failure{
+            notifyProductionDeploy()
+        }
+ 
+        success{
+            notifyProductionDeploy()
+        }
+    }
+
+}
+
+/* Slack Notification Set */
+def notifyProductionDeploy() {
+if (currentBuild.currentResult == 'SUCCESS') {
+    def message = "@here Build <${env.BUILD_URL}|${currentBuild.displayName}> " +
+        "${currentBuild.currentResult}"
+    slackSend(message: message, channel: '#devops', color: 'good')
+} else {
+    def message = "@here Build <${env.BUILD_URL}|${currentBuild.displayName}> " +
+        "${currentBuild.currentResult}"
+    slackSend(message: message, channel: '#devops', color: 'danger')
 }
 }
